@@ -37,139 +37,141 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 public class Grabber {
-    private static final String TEST_JSON = "test.json";
-    private static final String url = "http://www.neterra.tv/content/tv_guide/0/live/60/";
-    private static final SimpleDateFormat DF = new SimpleDateFormat("yyyyMMddhhmmss");
+	private static final String TEST_JSON = "test.json";
+	private static final String url = "http://www.neterra.tv/content/tv_guide/0/live/60/";
+	private static final SimpleDateFormat DF = new SimpleDateFormat(
+			"yyyyMMddhhmmss");
 
-    private static Map<String, String> channels = new HashMap<String, String>();
-    static {
-	channels.put("79", "BNT2");
-	channels.put("39", "NEWS7");
-	channels.put("60", "BGonAIR");
-	channels.put("93", "Diema Family +1");
-	channels.put("2", "TV7");
-	channels.put("32", "NOVA");
-	channels.put("31", "BNT1");
-    }
-
-    public static void main(String[] args) throws IOException, ParserConfigurationException, TransformerFactoryConfigurationError,
-    TransformerException {
-	Grabber grabber = new Grabber();
-	JSONObject jsonObject = (JSONObject) grabber.restore().get("media");
-	grabber.createDoc(jsonObject);
-	// grabber.doInBackground();
-	// String json = grabber.restore().toString();
-	// log.info(json);
-    }
-
-    private JSONObject restore() {
-	try {
-	    return new JSONObject(readFile(TEST_JSON, Charset.defaultCharset()));
-	} catch (FileNotFoundException e) {
-	    e.printStackTrace();
-	} catch (JSONException e) {
-	    e.printStackTrace();
-	} catch (IOException e) {
-	    e.printStackTrace();
+	private static Map<String, String> channels = new HashMap<String, String>();
+	static {
+		channels.put("79", "BNT2");
+		channels.put("39", "NEWS7");
+		channels.put("60", "BGonAIR");
+		channels.put("93", "Diema Family +1");
+		channels.put("2", "TV7");
+		channels.put("32", "NOVA");
+		channels.put("31", "BNT1");
 	}
 
-	return null;
-    }
-
-    static String readFile(String path, Charset encoding) throws IOException {
-	byte[] encoded = Files.readAllBytes(Paths.get(path));
-	return encoding.decode(ByteBuffer.wrap(encoded)).toString();
-    }
-
-    private JSONObject doInBackground() {
-	JSONObject returned = new JSONObject();
-	HttpClient httpclient = HttpClients.createDefault();
-	HttpGet httpget = new HttpGet(url);
-	httpget.addHeader("accept", "application/json");
-	HttpResponse response;
-	try {
-	    response = httpclient.execute(httpget);
-	    HttpEntity entity = response.getEntity();
-
-	    if (entity != null) {
-		String result = EntityUtils.toString(entity);
-		returned = new JSONObject(result);
-		JSONObject media = (JSONObject) returned.get("media");
-		return media;
-		//JSONObject bnt = (JSONObject) media.get("79");
-		//log.info(bnt.toString());
-
-		// FileWriter file = new FileWriter(TEST_JSON);
-		// file.write(returned.toString());
-		// file.close();
-	    }
-	} catch (IOException e) {
-	    e.printStackTrace();
+	public static void main(String[] args) throws IOException,
+			ParserConfigurationException, TransformerFactoryConfigurationError,
+			TransformerException {
+		Grabber grabber = new Grabber();
+		JSONObject jsonObject;
+//		jsonObject = (JSONObject) grabber.restore().get("media");
+		jsonObject = grabber.doInBackground();
+		grabber.createDoc(jsonObject);
 	}
 
-	return returned;
-    }
+	private JSONObject restore() {
+		try {
+			return new JSONObject(readFile(TEST_JSON, Charset.defaultCharset()));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (JSONException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-    private void createDoc(JSONObject media) throws ParserConfigurationException, TransformerFactoryConfigurationError,
-    TransformerException {
-	DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-	DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-	Document doc = docBuilder.newDocument();
-
-	Element tv = doc.createElement("tv");
-	tv.setAttribute("generator-info-name", "shari");
-	doc.appendChild(tv);
-
-	Element channel;
-	Element channelName;
-	for (Entry<String, String> entry : channels.entrySet()) {
-	    channel = doc.createElement("channel");
-	    channel.setAttribute("id", entry.getKey());
-
-	    channelName = doc.createElement("display-name");
-	    channelName.setAttribute("lang", "bg");
-	    channelName.setTextContent(entry.getValue());
-
-	    channel.appendChild(channelName);
-	    tv.appendChild(channel);
+		return null;
 	}
 
-	Element programme;
-	Element title;
-	Calendar startCal;
-	Calendar stopCal;
-	for (Entry<String, String> entry : channels.entrySet()) {
-	    JSONObject sender = (JSONObject) media.get(entry.getKey());
-	    JSONArray epgs = (JSONArray) sender.get("epg");
-	    for (int i = 0; i < epgs.length(); i++) {
-		JSONObject epg = (JSONObject) epgs.get(i);
-		programme = doc.createElement("programme");
-		programme.setAttribute("channel", entry.getKey());
-		startCal = new GregorianCalendar();
-		startCal.setTimeInMillis(epg.getLong("start_time_unix")*1000);
-
-		stopCal = new GregorianCalendar();
-		stopCal.setTimeInMillis(epg.getLong("end_time_unix")*1000);
-
-		programme.setAttribute("start", DF.format(startCal.getTime()));
-		programme.setAttribute("stop", DF.format(stopCal.getTime()));
-
-		title = doc.createElement("title");
-		title.setAttribute("lang", "bg");
-		title.setTextContent(epg.getString("epg_prod_name"));
-
-		programme.appendChild(title);
-		tv.appendChild(programme);
-	    }
+	static String readFile(String path, Charset encoding) throws IOException {
+		byte[] encoded = Files.readAllBytes(Paths.get(path));
+		return encoding.decode(ByteBuffer.wrap(encoded)).toString();
 	}
 
-	// output DOM XML to console
-	Transformer transformer = TransformerFactory.newInstance().newTransformer();
-	transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-	DOMSource source = new DOMSource(doc);
-	StreamResult console = new StreamResult(System.out);
-	transformer.transform(source, console);
+	private JSONObject doInBackground() {
+		JSONObject returned = new JSONObject();
+		HttpClient httpclient = HttpClients.createDefault();
+		HttpGet httpget = new HttpGet(url);
+		httpget.addHeader("accept", "application/json");
+		HttpResponse response;
+		try {
+			response = httpclient.execute(httpget);
+			HttpEntity entity = response.getEntity();
 
-	//log.info(doc.toString());
-    }
+			if (entity != null) {
+				String result = EntityUtils.toString(entity);
+				returned = new JSONObject(result);
+				JSONObject media = (JSONObject) returned.get("media");
+				return media;
+				// JSONObject bnt = (JSONObject) media.get("79");
+				// log.info(bnt.toString());
+
+				// FileWriter file = new FileWriter(TEST_JSON);
+				// file.write(returned.toString());
+				// file.close();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return returned;
+	}
+
+	private void createDoc(JSONObject media)
+			throws ParserConfigurationException,
+			TransformerFactoryConfigurationError, TransformerException {
+		DocumentBuilderFactory docFactory = DocumentBuilderFactory
+				.newInstance();
+		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+		Document doc = docBuilder.newDocument();
+
+		Element tv = doc.createElement("tv");
+		tv.setAttribute("generator-info-name", "shari");
+		doc.appendChild(tv);
+
+		Element channel;
+		Element channelName;
+		for (Entry<String, String> entry : channels.entrySet()) {
+			channel = doc.createElement("channel");
+			channel.setAttribute("id", entry.getKey());
+
+			channelName = doc.createElement("display-name");
+			channelName.setAttribute("lang", "bg");
+			channelName.setTextContent(entry.getValue());
+
+			channel.appendChild(channelName);
+			tv.appendChild(channel);
+		}
+
+		Element programme;
+		Element title;
+		Calendar startCal;
+		Calendar stopCal;
+		for (Entry<String, String> entry : channels.entrySet()) {
+			JSONObject sender = (JSONObject) media.get(entry.getKey());
+			JSONArray epgs = (JSONArray) sender.get("epg");
+			for (int i = 0; i < epgs.length(); i++) {
+				JSONObject epg = (JSONObject) epgs.get(i);
+				programme = doc.createElement("programme");
+				programme.setAttribute("channel", entry.getKey());
+				startCal = new GregorianCalendar();
+				startCal.setTimeInMillis(epg.getLong("start_time_unix") * 1000);
+
+				stopCal = new GregorianCalendar();
+				stopCal.setTimeInMillis(epg.getLong("end_time_unix") * 1000);
+
+				programme.setAttribute("start", DF.format(startCal.getTime()));
+				programme.setAttribute("stop", DF.format(stopCal.getTime()));
+
+				title = doc.createElement("title");
+				title.setAttribute("lang", "bg");
+				title.setTextContent(epg.getString("epg_prod_name"));
+
+				programme.appendChild(title);
+				tv.appendChild(programme);
+			}
+		}
+
+		// output DOM XML to console
+		Transformer transformer = TransformerFactory.newInstance()
+				.newTransformer();
+		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+		DOMSource source = new DOMSource(doc);
+		StreamResult console = new StreamResult(System.out);
+		transformer.transform(source, console);
+	}
 }
