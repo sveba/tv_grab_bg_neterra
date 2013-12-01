@@ -1,0 +1,13 @@
+#!/bin/bash
+call="true";
+while true; do
+        case "$1" in
+            -d | --description ) echo "Bulgaria (neterra.tv) "; call="false";break;;
+            -c | --capabilities ) echo "baseline"; call="false";break;;
+            * ) break;;
+        esac
+done
+
+if [ $call = "true" ];then
+  java -jar /usr/local/lib/xmltvgrabber.jar
+fi
