@@ -126,8 +126,10 @@ public class NeterraGrabber {
 			while (keys.hasNext()) {
 				String key = (String) keys.next();
 				JSONObject sender = (JSONObject) media.get(key);
-				String jsonChannel = sender.getString("product_file_tag");
-				if (jsonChannel != null && jsonChannel.equalsIgnoreCase(entry.getKey())) {
+				String jsonChannel = sender.getString("media_name");
+				String jsonChannel2 = sender.getString("product_file_tag");
+				if (jsonChannel != null
+						&& (jsonChannel.equalsIgnoreCase(entry.getKey()) || jsonChannel2.equalsIgnoreCase(entry.getKey()))) {
 					JSONArray epgs = (JSONArray) sender.get("epg");
 
 					for (int i = 0; i < epgs.length(); i++) {
