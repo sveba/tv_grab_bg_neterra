@@ -34,7 +34,7 @@ import org.w3c.dom.Element;
 public class NeterraGrabber {
 	private static final String URL = "http://www.neterra.tv/content/tv_guide/";
 	private static final int DAYS = 3;
-	private static final SimpleDateFormat DF = new SimpleDateFormat("yyyyMMddHHmmss");
+	private static final SimpleDateFormat DF = new SimpleDateFormat("yyyyMMddHHmmss Z");
 
 	private static Map<String, String> channels = new HashMap<String, String>();
 	static {
