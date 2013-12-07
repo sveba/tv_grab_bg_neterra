@@ -30,9 +30,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 public class NeterraGrabber {
 	private static final String URL = "http://www.neterra.tv/content/tv_guide/";
+	private static final String BTV = "http://www.potv.bg/tv-programa/programs/8.xml";
 	private static final int DAYS = 3;
 	private static final SimpleDateFormat DF = new SimpleDateFormat("yyyyMMddHHmmss Z");
 
@@ -45,6 +49,7 @@ public class NeterraGrabber {
 		channels.put("tv7", "TV7");
 		channels.put("nova", "NOVA");
 		channels.put("bnt1", "BNT1");
+		channels.put("btv", "BTV");
 	}
 
 	public static void main(String[] args) {
@@ -99,16 +104,15 @@ public class NeterraGrabber {
 			tv.appendChild(channel);
 		}
 
+		JSONObject jsonEpg;
 		for (int i = 0; i < DAYS; i++) {
-			addEpgForDay(i, doc, tv);
+			jsonEpg = getJsonEpg(i);
+			addEpg(i, jsonEpg, doc, tv);
 		}
 
-		return doc;
-	}
+		addBtv(doc, tv);
 
-	private void addEpgForDay(int day, Document doc, Element tv) {
-		JSONObject jsonEpg = getJsonEpg(day);
-		addEpg(day, jsonEpg, doc, tv);
+		return doc;
 	}
 
 	/**
@@ -140,16 +144,12 @@ public class NeterraGrabber {
 	}
 
 	/**
-	 * Create XML-Doc
+	 * Converts json to xmltv scheme
 	 * 
 	 * @param jsonEpg
 	 * @return
 	 */
 	private void addEpg(int day, JSONObject jsonEpg, Document doc, Element tv) {
-		Element programme;
-		Element title;
-		Calendar startCal;
-		Calendar stopCal;
 		for (Entry<String, String> entry : channels.entrySet()) {
 			Iterator keys = jsonEpg.keys();
 			while (keys.hasNext()) {
@@ -157,32 +157,96 @@ public class NeterraGrabber {
 				JSONObject sender = (JSONObject) jsonEpg.get(key);
 				String jsonChannel = sender.getString("media_name");
 				String jsonChannel2 = sender.getString("product_file_tag");
+				String channelName = entry.getKey();
 				if (jsonChannel != null
-						&& (jsonChannel.equalsIgnoreCase(entry.getKey()) || jsonChannel2.equalsIgnoreCase(entry.getKey()))) {
+						&& (jsonChannel.equalsIgnoreCase(channelName) || jsonChannel2.equalsIgnoreCase(channelName))) {
 					JSONArray epgs = (JSONArray) sender.get("epg");
 
 					for (int i = 0; i < epgs.length(); i++) {
 						JSONObject epg = (JSONObject) epgs.get(i);
-						programme = doc.createElement("programme");
-						programme.setAttribute("channel", entry.getKey());
-						startCal = new GregorianCalendar();
-						startCal.setTimeInMillis(epg.getLong("start_time_unix") * 1000);
+						String name = epg.getString("epg_prod_name");
+						long start = epg.getLong("start_time_unix");
+						long stop = epg.getLong("end_time_unix");
 
-						stopCal = new GregorianCalendar();
-						stopCal.setTimeInMillis(epg.getLong("end_time_unix") * 1000);
-
-						programme.setAttribute("start", DF.format(startCal.getTime()));
-						programme.setAttribute("stop", DF.format(stopCal.getTime()));
-
-						title = doc.createElement("title");
-						title.setAttribute("lang", "bg");
-						title.setTextContent(epg.getString("epg_prod_name"));
-
-						programme.appendChild(title);
-						tv.appendChild(programme);
+						addEvent(doc, tv, channelName, start, stop, name);
 					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Gets epg for BTV-channel
+	 * 
+	 * @param doc
+	 * @param tv
+	 */
+	private void addBtv(Document doc, Element tv) {
+		HttpClient httpclient = HttpClients.createDefault();
+		HttpGet httpget = new HttpGet(BTV);
+		httpget.addHeader("accept", "application/json");
+		HttpResponse response;
+		try {
+			response = httpclient.execute(httpget);
+			HttpEntity entity = response.getEntity();
+			if (entity != null) {
+				DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder newDocumentBuilder = docFactory.newDocumentBuilder();
+				Document btvDoc = newDocumentBuilder.parse(entity.getContent());
+				NodeList events = btvDoc.getElementsByTagName("event");
+				Node node;
+				Element event;
+				for (int i = 0; i < events.getLength(); i++) {
+					node = events.item(i);
+					if (node instanceof Element) {
+						event = (Element) node;
+						String start = ((Element) event.getElementsByTagName("startTime").item(0)).getTextContent();
+						String stop = ((Element) event.getElementsByTagName("endTime").item(0)).getTextContent();
+						String name = ((Element) event.getElementsByTagName("name").item(0)).getTextContent();
+
+						addEvent(doc, tv, "btv", Long.parseLong(start), Long.parseLong(stop), name);
+					}
+				}
+			}
+
+		} catch (IOException | ParserConfigurationException | IllegalStateException | SAXException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	/**
+	 * Adds programme-Tag to the xml
+	 * 
+	 * @param doc
+	 * @param tv
+	 * @param channelName
+	 * @param start
+	 * @param stop
+	 * @param name
+	 */
+	private void addEvent(Document doc, Element tv, String channelName, long start, long stop, String name) {
+		Element programme;
+		Element title;
+		Calendar startCal;
+		Calendar stopCal;
+		programme = doc.createElement("programme");
+		programme.setAttribute("channel", channelName);
+
+		startCal = new GregorianCalendar();
+		startCal.setTimeInMillis(start * 1000);
+
+		stopCal = new GregorianCalendar();
+		stopCal.setTimeInMillis(stop * 1000);
+
+		programme.setAttribute("start", DF.format(startCal.getTime()));
+		programme.setAttribute("stop", DF.format(stopCal.getTime()));
+
+		title = doc.createElement("title");
+		title.setAttribute("lang", "bg");
+		title.setTextContent(name);
+
+		programme.appendChild(title);
+		tv.appendChild(programme);
 	}
 }
