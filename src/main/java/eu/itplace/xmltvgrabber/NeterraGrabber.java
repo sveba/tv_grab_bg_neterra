@@ -32,7 +32,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 public class NeterraGrabber {
-	private static final String url = "http://www.neterra.tv/content/tv_guide/0/live/60/";
+	private static final String URL = "http://www.neterra.tv/content/tv_guide/";
+	private static final int DAYS = 3;
 	private static final SimpleDateFormat DF = new SimpleDateFormat("yyyyMMddHHmmss");
 
 	private static Map<String, String> channels = new HashMap<String, String>();
@@ -48,47 +49,29 @@ public class NeterraGrabber {
 
 	public static void main(String[] args) {
 		NeterraGrabber grabber = new NeterraGrabber();
-		JSONObject jsonObject;
-		jsonObject = grabber.getMediaJson();
-		Document doc = grabber.createDoc(jsonObject);
+		Document doc = grabber.createDoc();
 		grabber.printXml(doc);
 	}
 
 	/**
-	 * Retrieves the json response and filters only the media object from it.
+	 * Prints the xml to the sysout
 	 * 
-	 * @return
+	 * @param doc
 	 */
-	public JSONObject getMediaJson() {
-		JSONObject returned = new JSONObject();
-		HttpClient httpclient = HttpClients.createDefault();
-		HttpGet httpget = new HttpGet(url);
-		httpget.addHeader("accept", "application/json");
-		HttpResponse response;
+	public void printXml(Document doc) {
 		try {
-			response = httpclient.execute(httpget);
-			HttpEntity entity = response.getEntity();
-
-			if (entity != null) {
-				String result = EntityUtils.toString(entity);
-				returned = new JSONObject(result);
-				JSONObject media = (JSONObject) returned.get("media");
-				return media;
-			}
-		} catch (IOException e) {
+			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			DOMSource source = new DOMSource(doc);
+			StreamResult console = new StreamResult(System.out);
+			transformer.transform(source, console);
+		} catch (TransformerFactoryConfigurationError | TransformerException e) {
 			e.printStackTrace();
 		}
 
-		return returned;
 	}
 
-	/**
-	 * Create XML-Doc
-	 * 
-	 * @param media
-	 * @return
-	 */
-	public Document createDoc(JSONObject media) {
+	public Document createDoc() {
 		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder docBuilder = null;
 		try {
@@ -116,16 +99,62 @@ public class NeterraGrabber {
 			tv.appendChild(channel);
 		}
 
+		for (int i = 0; i < DAYS; i++) {
+			addEpgForDay(i, doc, tv);
+		}
+
+		return doc;
+	}
+
+	private void addEpgForDay(int day, Document doc, Element tv) {
+		JSONObject jsonEpg = getJsonEpg(day);
+		addEpg(day, jsonEpg, doc, tv);
+	}
+
+	/**
+	 * Retrieves the json response and filters only the media object from it.
+	 * 
+	 * @return
+	 */
+	public JSONObject getJsonEpg(int i) {
+		JSONObject returned = new JSONObject();
+		HttpClient httpclient = HttpClients.createDefault();
+		HttpGet httpget = new HttpGet(URL + i);
+		httpget.addHeader("accept", "application/json");
+		HttpResponse response;
+		try {
+			response = httpclient.execute(httpget);
+			HttpEntity entity = response.getEntity();
+
+			if (entity != null) {
+				String result = EntityUtils.toString(entity);
+				returned = new JSONObject(result);
+				JSONObject media = (JSONObject) returned.get("media");
+				return media;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return returned;
+	}
+
+	/**
+	 * Create XML-Doc
+	 * 
+	 * @param jsonEpg
+	 * @return
+	 */
+	private void addEpg(int day, JSONObject jsonEpg, Document doc, Element tv) {
 		Element programme;
 		Element title;
 		Calendar startCal;
 		Calendar stopCal;
-
 		for (Entry<String, String> entry : channels.entrySet()) {
-			Iterator keys = media.keys();
+			Iterator keys = jsonEpg.keys();
 			while (keys.hasNext()) {
 				String key = (String) keys.next();
-				JSONObject sender = (JSONObject) media.get(key);
+				JSONObject sender = (JSONObject) jsonEpg.get(key);
 				String jsonChannel = sender.getString("media_name");
 				String jsonChannel2 = sender.getString("product_file_tag");
 				if (jsonChannel != null
@@ -155,25 +184,5 @@ public class NeterraGrabber {
 				}
 			}
 		}
-
-		return doc;
-	}
-
-	/**
-	 * Prints the xml to the sysout
-	 * 
-	 * @param doc
-	 */
-	public void printXml(Document doc) {
-		try {
-			Transformer transformer = TransformerFactory.newInstance().newTransformer();
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			DOMSource source = new DOMSource(doc);
-			StreamResult console = new StreamResult(System.out);
-			transformer.transform(source, console);
-		} catch (TransformerFactoryConfigurationError | TransformerException e) {
-			e.printStackTrace();
-		}
-
 	}
 }

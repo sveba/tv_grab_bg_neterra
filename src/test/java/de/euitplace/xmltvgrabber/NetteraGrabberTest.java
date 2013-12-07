@@ -1,7 +1,5 @@
 package de.euitplace.xmltvgrabber;
 
-import static org.junit.Assert.assertNotNull;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -11,6 +9,7 @@ import java.nio.file.Paths;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import eu.itplace.xmltvgrabber.NeterraGrabber;
@@ -18,16 +17,20 @@ import eu.itplace.xmltvgrabber.NeterraGrabber;
 public class NetteraGrabberTest {
 	private static final String TEST_JSON = "test.json";
 
-	@Test
-	public void testDownload() {
-		NeterraGrabber grabber = new NeterraGrabber();
-		JSONObject mediaJson = grabber.getMediaJson();
-		JSONObject.testValidity(mediaJson);
-		assertNotNull(mediaJson);
-		grabber.createDoc(mediaJson);
-		// assertTrue(mediaJson.has("media"));
+	// @Test
+	// public void testDownload() {
+	// NeterraGrabber grabber = new NeterraGrabber();
+	// JSONObject mediaJson = grabber.getJsonEpg();
+	// JSONObject.testValidity(mediaJson);
+	// assertNotNull(mediaJson);
+	// System.out.println(mediaJson.toString());
+	// }
 
-		// fail("Not yet implemented");
+	@Test
+	@Ignore
+	public void testCreateDoc() {
+		NeterraGrabber grabber = new NeterraGrabber();
+		grabber.createDoc();
 	}
 
 	private JSONObject restore() {
