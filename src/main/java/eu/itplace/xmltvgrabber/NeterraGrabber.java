@@ -20,6 +20,7 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -133,7 +134,12 @@ public class NeterraGrabber {
 			if (entity != null) {
 				String result = EntityUtils.toString(entity);
 				returned = new JSONObject(result);
-				JSONObject media = (JSONObject) returned.get("media");
+				JSONObject media = null;
+				try {
+					media = (JSONObject) returned.get("media");
+				} catch (ClassCastException ex) {
+					// do nothing
+				}
 				return media;
 			}
 		} catch (IOException e) {
@@ -150,25 +156,26 @@ public class NeterraGrabber {
 	 * @return
 	 */
 	private void addEpg(int day, JSONObject jsonEpg, Document doc, Element tv) {
-		for (Entry<String, String> entry : channels.entrySet()) {
-			Iterator keys = jsonEpg.keys();
-			while (keys.hasNext()) {
-				String key = (String) keys.next();
-				JSONObject sender = (JSONObject) jsonEpg.get(key);
-				String jsonChannel = sender.getString("media_name");
-				String jsonChannel2 = sender.getString("product_file_tag");
-				String channelName = entry.getKey();
-				if (jsonChannel != null
-						&& (jsonChannel.equalsIgnoreCase(channelName) || jsonChannel2.equalsIgnoreCase(channelName))) {
-					JSONArray epgs = (JSONArray) sender.get("epg");
+		if (jsonEpg != null) {
+			for (Entry<String, String> entry : channels.entrySet()) {
+				Iterator keys = jsonEpg.keys();
+				while (keys.hasNext()) {
+					String key = (String) keys.next();
+					JSONObject sender = (JSONObject) jsonEpg.get(key);
+					String jsonChannel = sender.getString("media_name");
+					String jsonChannel2 = sender.getString("product_file_tag");
+					String channelName = entry.getKey();
+					if (jsonChannel != null && (jsonChannel.equalsIgnoreCase(channelName) || jsonChannel2.equalsIgnoreCase(channelName))) {
+						JSONArray epgs = (JSONArray) sender.get("epg");
 
-					for (int i = 0; i < epgs.length(); i++) {
-						JSONObject epg = (JSONObject) epgs.get(i);
-						String name = epg.getString("epg_prod_name");
-						long start = epg.getLong("start_time_unix");
-						long stop = epg.getLong("end_time_unix");
+						for (int i = 0; i < epgs.length(); i++) {
+							JSONObject epg = (JSONObject) epgs.get(i);
+							String name = epg.getString("epg_prod_name");
+							long start = epg.getLong("start_time_unix");
+							long stop = epg.getLong("end_time_unix");
 
-						addEvent(doc, tv, channelName, start, stop, name);
+							addEvent(doc, tv, channelName, start, stop, name);
+						}
 					}
 				}
 			}
