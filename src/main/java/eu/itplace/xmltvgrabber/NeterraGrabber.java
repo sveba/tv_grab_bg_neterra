@@ -191,7 +191,6 @@ public class NeterraGrabber {
 	private void addBtv(Document doc, Element tv) {
 		HttpClient httpclient = HttpClients.createDefault();
 		HttpGet httpget = new HttpGet(BTV);
-		httpget.addHeader("accept", "application/json");
 		HttpResponse response;
 		try {
 			response = httpclient.execute(httpget);
