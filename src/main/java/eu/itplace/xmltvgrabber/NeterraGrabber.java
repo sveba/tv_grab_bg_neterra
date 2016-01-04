@@ -61,7 +61,7 @@ public class NeterraGrabber {
 
 	/**
 	 * Prints the xml to the sysout
-	 * 
+	 *
 	 * @param doc
 	 */
 	public void printXml(Document doc) {
@@ -111,14 +111,12 @@ public class NeterraGrabber {
 			addEpg(i, jsonEpg, doc, tv);
 		}
 
-		addBtv(doc, tv);
-
 		return doc;
 	}
 
 	/**
 	 * Retrieves the json response and filters only the media object from it.
-	 * 
+	 *
 	 * @return
 	 */
 	public JSONObject getJsonEpg(int i) {
@@ -151,7 +149,7 @@ public class NeterraGrabber {
 
 	/**
 	 * Converts json to xmltv scheme
-	 * 
+	 *
 	 * @param jsonEpg
 	 * @return
 	 */
@@ -183,47 +181,8 @@ public class NeterraGrabber {
 	}
 
 	/**
-	 * Gets epg for BTV-channel
-	 * 
-	 * @param doc
-	 * @param tv
-	 */
-	private void addBtv(Document doc, Element tv) {
-		HttpClient httpclient = HttpClients.createDefault();
-		HttpGet httpget = new HttpGet(BTV);
-		HttpResponse response;
-		try {
-			response = httpclient.execute(httpget);
-			HttpEntity entity = response.getEntity();
-			if (entity != null) {
-				DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-				DocumentBuilder newDocumentBuilder = docFactory.newDocumentBuilder();
-				Document btvDoc = newDocumentBuilder.parse(entity.getContent());
-				NodeList events = btvDoc.getElementsByTagName("event");
-				Node node;
-				Element event;
-				for (int i = 0; i < events.getLength(); i++) {
-					node = events.item(i);
-					if (node instanceof Element) {
-						event = (Element) node;
-						String start = ((Element) event.getElementsByTagName("startTime").item(0)).getTextContent();
-						String stop = ((Element) event.getElementsByTagName("endTime").item(0)).getTextContent();
-						String name = ((Element) event.getElementsByTagName("name").item(0)).getTextContent();
-
-						addEvent(doc, tv, "btv", Long.parseLong(start), Long.parseLong(stop), name);
-					}
-				}
-			}
-
-		} catch (IOException | ParserConfigurationException | IllegalStateException | SAXException e) {
-			e.printStackTrace();
-		}
-
-	}
-
-	/**
 	 * Adds programme-Tag to the xml
-	 * 
+	 *
 	 * @param doc
 	 * @param tv
 	 * @param channelName
