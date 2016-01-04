@@ -30,7 +30,7 @@ public class NetteraGrabberTest {
 	@Ignore
 	public void testCreateDoc() {
 		NeterraGrabber grabber = new NeterraGrabber();
-		grabber.createDoc();
+		grabber.createEpgXml();
 	}
 
 	private JSONObject restore() {
