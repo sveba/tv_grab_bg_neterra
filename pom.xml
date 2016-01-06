@@ -34,7 +34,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>eu.itplace.xmltvgrabber.NeterraGrabber</mainClass>
+							<mainClass>eu.itplace.xmltvgrabber.App</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

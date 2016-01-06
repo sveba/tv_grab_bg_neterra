@@ -11,10 +11,19 @@ package eu.itplace.xmltvgrabber;
  * @author Svetoslav Batchovski
  */
 public class EpgEvent {
-    String name;
-    String description;
-    long start;
-    long end;
+    private String channelId;
+    private String name;
+    private String description;
+    private long start;
+    private long end;
+
+    public String getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(String channelId) {
+        this.channelId = channelId;
+    }
 
     public String getName() {
         return name;

@@ -14,23 +14,20 @@ import org.w3c.dom.Element;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.TransformerFactoryConfigurationError;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class NeterraGrabber {
     private static final String URL = "http://www.neterra.tv/content/tv_guide/";
-    private static final int DAYS = 5;
     private static final SimpleDateFormat DF = new SimpleDateFormat("yyyyMMddHHmmss Z");
 
     public static final String NETERRA_PRODUCT_NAME = "product_name";
@@ -39,32 +36,17 @@ public class NeterraGrabber {
     public static final String NETERRA_EPG_PROD_NAME = "epg_prod_name";
     public static final String NETERRA_START_TIME_UNIX = "start_time_unix";
     public static final String NETERRA_END_TIME_UNIX = "end_time_unix";
+    public static final String NETERRA_DESCRIPTION = "description";
 
-    public static void main(String[] args) {
-        NeterraGrabber grabber = new NeterraGrabber();
-        Document doc = grabber.createEpgXml();
-        grabber.printXml(doc);
-    }
+    private Map<String, Channel> channels = new TreeMap<>();
+    private List<JSONObject> neterraEpgs = new ArrayList<>();
 
     /**
-     * Prints the xml to the sysout
-     *
-     * @param doc
+     * Create the xml file
+     * @return
      */
-    public void printXml(Document doc) {
-        try {
-            Transformer transformer = TransformerFactory.newInstance().newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            DOMSource source = new DOMSource(doc);
-            StreamResult console = new StreamResult(System.out);
-            transformer.transform(source, console);
-        } catch (TransformerFactoryConfigurationError | TransformerException e) {
-            e.printStackTrace();
-        }
-
-    }
-
     public Document createEpgXml() {
+
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder docBuilder = null;
         try {
@@ -78,10 +60,15 @@ public class NeterraGrabber {
         tv.setAttribute("generator-info-name", "it-place.eu");
         doc.appendChild(tv);
 
-        JSONObject jsonEpg = getJsonEpg();
+        for (Channel channel : channels.values()) {
+            addChannelTag(doc, tv, channel);
+        }
 
-        addChannelsTags(jsonEpg, doc, tv);
-        addEpgTags(jsonEpg, doc, tv);
+        for (Channel channel : channels.values()) {
+            for(Map.Entry<Long, EpgEvent> entry: channel.getEpgEvents().entrySet()) {
+                addEpgTag(doc, tv, entry.getValue());
+            }
+        }
 
         return doc;
     }
@@ -91,119 +78,128 @@ public class NeterraGrabber {
      *
      * @return
      */
-    public JSONObject getJsonEpg() {
-        JSONObject returned = new JSONObject();
-        HttpClient httpclient = HttpClients.createDefault();
-        HttpGet httpget = new HttpGet(URL + DAYS);
-        httpget.addHeader("accept", "application/json");
+    public void getNeterraEpgs(int days) {
+        JSONObject returned;
+        HttpGet httpget;
         HttpResponse response;
-        try {
-            response = httpclient.execute(httpget);
-            HttpEntity entity = response.getEntity();
+        HttpClient httpclient = HttpClients.createDefault();
 
-            if (entity != null) {
-                String result = EntityUtils.toString(entity);
-                returned = new JSONObject(result);
-                JSONObject media = null;
-                try {
-                    media = (JSONObject) returned.get("media");
-                } catch (ClassCastException ex) {
-                    // do nothing
+        for (int i = 0; i < days; i++) {
+            httpget = new HttpGet(URL + i);
+            httpget.addHeader("accept", "application/json");
+
+            try {
+                response = httpclient.execute(httpget);
+                HttpEntity entity = response.getEntity();
+
+                if (entity != null) {
+                    String result = EntityUtils.toString(entity);
+                    returned = new JSONObject(result);
+                    JSONObject media = null;
+                    try {
+                        media = (JSONObject) returned.get("media");
+                    } catch (ClassCastException ex) {
+                        // do nothing
+                    }
+                    neterraEpgs.add(media);
                 }
-                return media;
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
-
-        return returned;
     }
 
-    private void addChannelsTags(JSONObject jsonEpg, Document doc, Element tv) {
-        Element channelEl;
-        Element channelNameEl;
-        Iterator keys = jsonEpg.keys();
+    public void getChannelsAndEpgs() {
         String key;
-        JSONObject sender;
-        String channelName;
         String channelId;
+        JSONObject neterraChannel;
+        Channel channel;
+        Iterator it;
 
-        while (keys.hasNext()) {
-            key = (String) keys.next();
-            sender = (JSONObject) jsonEpg.get(key);
-            channelName = sender.getString(NETERRA_PRODUCT_NAME);
-            channelId = sender.getString(NETERRA_PRODUCT_FILE_TAG);
+        for (JSONObject neterraEpg : neterraEpgs) {
+            it = neterraEpg.keys();
+            while (it.hasNext()) {
+                key = (String) it.next();
+                neterraChannel = (JSONObject) neterraEpg.get(key);
 
-            channelEl = doc.createElement("channel");
-            channelEl.setAttribute("id", channelId);
+                channelId = neterraChannel.getString(NETERRA_PRODUCT_FILE_TAG);
 
-            channelNameEl = doc.createElement("display-name");
-            channelNameEl.setAttribute("lang", "bg");
-            channelNameEl.setTextContent(channelName);
+                channel = channels.containsKey(channelId) ? channels.get(channelId) : new Channel();
 
-            channelEl.appendChild(channelNameEl);
-            tv.appendChild(channelEl);
+                channel.setDisplayName(neterraChannel.getString(NETERRA_PRODUCT_NAME).trim());
+                channel.setId(channelId);
+                channel.getEpgEvents().putAll(convertEpgEvents(neterraChannel, channel));
+
+                channels.put(channel.getId(), channel);
+            }
         }
     }
 
+    private Map<Long, EpgEvent> convertEpgEvents(JSONObject neterraChannel, Channel channel) {
+        Map<Long, EpgEvent> channelEpgEvents = new TreeMap<>();
 
-
-    /**
-     * Add EPG-Infos to
-     *
-     * @param jsonEpg
-     * @return
-     */
-    private void addEpgTags(JSONObject jsonEpg, Document doc, Element tv) {
-        if (jsonEpg != null) {
-            String key;
-            JSONObject sender;
-            String channelId;
+        if (neterraChannel != null) {
             EpgEvent epgEvent;
             JSONArray epgItems;
             JSONObject epgItem;
 
-            Iterator keys = jsonEpg.keys();
-            while (keys.hasNext()) {
-                key = (String) keys.next();
-                sender = (JSONObject) jsonEpg.get(key);
-                channelId = sender.getString(NETERRA_PRODUCT_FILE_TAG);
-                epgItems = (JSONArray) sender.get(NETERRA_EPG);
+            epgItems = (JSONArray) neterraChannel.get(NETERRA_EPG);
 
-                for (int i = 0; i < epgItems.length(); i++) {
-                    epgEvent = new EpgEvent();
+            for (int i = 0; i < epgItems.length(); i++) {
+                epgEvent = new EpgEvent();
 
-                    epgItem = (JSONObject) epgItems.get(i);
+                epgItem = (JSONObject) epgItems.get(i);
 
-                    epgEvent.setName(epgItem.getString(NETERRA_EPG_PROD_NAME));
-                    epgEvent.setStart(epgItem.getLong(NETERRA_START_TIME_UNIX));
-                    epgEvent.setEnd(epgItem.getLong(NETERRA_END_TIME_UNIX));
-                    epgEvent.setDescription(epgItem.getString("description"));
+                epgEvent.setChannelId(channel.getId());
+                epgEvent.setName(epgItem.getString(NETERRA_EPG_PROD_NAME));
+                epgEvent.setStart(epgItem.getLong(NETERRA_START_TIME_UNIX));
+                epgEvent.setEnd(epgItem.getLong(NETERRA_END_TIME_UNIX));
+                epgEvent.setDescription(epgItem.getString(NETERRA_DESCRIPTION));
 
-                    addEvent(doc, tv, channelId, epgEvent);
-                }
+                channelEpgEvents.put(epgEvent.getStart(), epgEvent);
             }
-
         }
+
+        return channelEpgEvents;
     }
 
     /**
-     * Adds epg-Tag to the xml
+     * Add channel-tag to the xml
+     * @param doc
+     * @param tv
+     * @param channel
+     */
+    private void addChannelTag(Document doc, Element tv, Channel channel) {
+        Element channelEl;
+        Element channelNameEl;
+
+        channelEl = doc.createElement("channel");
+        channelEl.setAttribute("id", channel.getId());
+
+        channelNameEl = doc.createElement("display-name");
+        channelNameEl.setAttribute("lang", "bg");
+        channelNameEl.setTextContent(channel.getDisplayName());
+
+        channelEl.appendChild(channelNameEl);
+        tv.appendChild(channelEl);
+    }
+
+    /**
+     * Adds epg-tag to the xml
      *
      * @param doc
      * @param tv
-     * @param channelName
      * @param epgEvent
      */
-    private void addEvent(Document doc, Element tv, String channelName, EpgEvent epgEvent) {
+    private void addEpgTag(Document doc, Element tv, EpgEvent epgEvent) {
         Element programme;
         Element title;
+        Element description;
         Calendar startCal;
         Calendar stopCal;
-        String description;
 
         programme = doc.createElement("programme");
-        programme.setAttribute("channel", channelName.trim());
+        programme.setAttribute("channel", epgEvent.getChannelId().trim());
 
         startCal = new GregorianCalendar();
         startCal.setTimeInMillis(epgEvent.getStart() * 1000);
@@ -216,15 +212,15 @@ public class NeterraGrabber {
 
         title = doc.createElement("title");
         title.setAttribute("lang", "bg");
+        title.setTextContent(epgEvent.getName());
 
-        description = epgEvent.getDescription();
-        if (!epgEvent.getDescription().contains(epgEvent.getName())) {
-            description = epgEvent.getName() + " - " + epgEvent.getDescription();
-        }
-
-        title.setTextContent(description);
+        description = doc.createElement("desc");
+        description.setAttribute("lang", "bg");
+        description.setTextContent(epgEvent.getDescription());
 
         programme.appendChild(title);
+        programme.appendChild(description);
+
         tv.appendChild(programme);
     }
 }

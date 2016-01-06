@@ -20,7 +20,7 @@ public class NetteraGrabberTest {
 	// @Test
 	// public void testDownload() {
 	// NeterraGrabber grabber = new NeterraGrabber();
-	// JSONObject mediaJson = grabber.getJsonEpg();
+	// JSONObject mediaJson = grabber.getNeterraEpgs();
 	// JSONObject.testValidity(mediaJson);
 	// assertNotNull(mediaJson);
 	// System.out.println(mediaJson.toString());
