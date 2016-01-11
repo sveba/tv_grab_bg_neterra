@@ -8,6 +8,7 @@ Requirements
 
 Usage arguments:
 
+```
 Option        Description
 ------        -----------
 -d [Integer]  number of EPG days to get (default: 5)
@@ -15,3 +16,4 @@ Option        Description
 -o <File>     output filename
 -t            Timezone. Example GMT+1 or GMT-5
                 (default: GMT)
+```
