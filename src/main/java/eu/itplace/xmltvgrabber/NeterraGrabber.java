@@ -16,6 +16,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import java.io.IOException;
+import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 
 public class NeterraGrabber {
@@ -45,7 +47,7 @@ public class NeterraGrabber {
      * Create the xml file
      * @return
      */
-    public Document createEpgXml() {
+    public Document createEpgXml(TimeZone tz) {
 
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder docBuilder = null;
@@ -66,7 +68,7 @@ public class NeterraGrabber {
 
         for (Channel channel : channels.values()) {
             for(Map.Entry<Long, EpgEvent> entry: channel.getEpgEvents().entrySet()) {
-                addEpgTag(doc, tv, entry.getValue());
+                addEpgTag(doc, tv, entry.getValue(), tz);
             }
         }
 
@@ -191,22 +193,20 @@ public class NeterraGrabber {
      * @param tv
      * @param epgEvent
      */
-    private void addEpgTag(Document doc, Element tv, EpgEvent epgEvent) {
+    private void addEpgTag(Document doc, Element tv, EpgEvent epgEvent, TimeZone tz) {
         Element programme;
         Element title;
         Element description;
-        Calendar startCal;
-        Calendar stopCal;
+        Calendar startCal = Calendar.getInstance();
+        Calendar stopCal = Calendar.getInstance();
 
         programme = doc.createElement("programme");
         programme.setAttribute("channel", epgEvent.getChannelId().trim());
 
-        startCal = new GregorianCalendar();
         startCal.setTimeInMillis(epgEvent.getStart() * 1000);
-
-        stopCal = new GregorianCalendar();
         stopCal.setTimeInMillis(epgEvent.getEnd() * 1000);
 
+        DF.setTimeZone(tz);
         programme.setAttribute("start", DF.format(startCal.getTime()));
         programme.setAttribute("stop", DF.format(stopCal.getTime()));
 

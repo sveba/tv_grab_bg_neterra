@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.TimeZone;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,7 +31,7 @@ public class NetteraGrabberTest {
 	@Ignore
 	public void testCreateDoc() {
 		NeterraGrabber grabber = new NeterraGrabber();
-		grabber.createEpgXml();
+		grabber.createEpgXml(TimeZone.getTimeZone("GMT"));
 	}
 
 	private JSONObject restore() {
