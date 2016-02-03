@@ -16,12 +16,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import java.io.IOException;
-import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +36,21 @@ public class NeterraGrabber {
     public static final String NETERRA_START_TIME_UNIX = "start_time_unix";
     public static final String NETERRA_END_TIME_UNIX = "end_time_unix";
     public static final String NETERRA_DESCRIPTION = "description";
+
+    private static final String TAG_TV = "tv";
+    private static final String TAG_CHANNEL = "channel";
+    private static final String TAG_DISPLAY_NAME = "display-name";
+    private static final String TAG_PROGRAM = "programme";
+    private static final String TAG_TITLE = "title";
+    private static final String TAG_DESC = "desc";
+
+    private static final String ATTR_ID = "id";
+    private static final String ATTR_GENERATOR_INFO_NAME = "generator-info-name";
+    private static final String ATTR_START = "start";
+    private static final String ATTR_STOP = "stop";
+    private static final String ATTR_CHANNEL = "channel";
+    private static final String ATTR_LANG = "lang";
+    public static final String BG = "bg";
 
     private Map<String, Channel> channels = new TreeMap<>();
     private List<JSONObject> neterraEpgs = new ArrayList<>();
@@ -58,8 +70,8 @@ public class NeterraGrabber {
         }
         Document doc = docBuilder.newDocument();
 
-        Element tv = doc.createElement("tv");
-        tv.setAttribute("generator-info-name", "it-place.eu");
+        Element tv = doc.createElement(TAG_TV);
+        tv.setAttribute(ATTR_GENERATOR_INFO_NAME, "it-place.eu");
         doc.appendChild(tv);
 
         for (Channel channel : channels.values()) {
@@ -175,11 +187,11 @@ public class NeterraGrabber {
         Element channelEl;
         Element channelNameEl;
 
-        channelEl = doc.createElement("channel");
-        channelEl.setAttribute("id", channel.getId());
+        channelEl = doc.createElement(TAG_CHANNEL);
+        channelEl.setAttribute(ATTR_ID, channel.getId());
 
-        channelNameEl = doc.createElement("display-name");
-        channelNameEl.setAttribute("lang", "bg");
+        channelNameEl = doc.createElement(TAG_DISPLAY_NAME);
+        channelNameEl.setAttribute(ATTR_LANG, BG);
         channelNameEl.setTextContent(channel.getDisplayName());
 
         channelEl.appendChild(channelNameEl);
@@ -200,22 +212,22 @@ public class NeterraGrabber {
         Calendar startCal = Calendar.getInstance();
         Calendar stopCal = Calendar.getInstance();
 
-        programme = doc.createElement("programme");
-        programme.setAttribute("channel", epgEvent.getChannelId().trim());
+        programme = doc.createElement(TAG_PROGRAM);
+        programme.setAttribute(ATTR_CHANNEL, epgEvent.getChannelId().trim());
 
         startCal.setTimeInMillis(epgEvent.getStart() * 1000);
         stopCal.setTimeInMillis(epgEvent.getEnd() * 1000);
 
         DF.setTimeZone(tz);
-        programme.setAttribute("start", DF.format(startCal.getTime()));
-        programme.setAttribute("stop", DF.format(stopCal.getTime()));
+        programme.setAttribute(ATTR_START, DF.format(startCal.getTime()));
+        programme.setAttribute(ATTR_STOP, DF.format(stopCal.getTime()));
 
-        title = doc.createElement("title");
-        title.setAttribute("lang", "bg");
+        title = doc.createElement(TAG_TITLE);
+        title.setAttribute(ATTR_LANG, BG);
         title.setTextContent(epgEvent.getName());
 
-        description = doc.createElement("desc");
-        description.setAttribute("lang", "bg");
+        description = doc.createElement(TAG_DESC);
+        description.setAttribute(ATTR_LANG, BG);
         description.setTextContent(epgEvent.getDescription());
 
         programme.appendChild(title);

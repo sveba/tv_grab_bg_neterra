@@ -34,23 +34,23 @@ public class App {
         OptionParser parser = new OptionParser();
 
         OptionSpec<Integer> daysOpt =  parser.accepts("d", "number of EPG days to get")
-                .withOptionalArg()
-                .ofType(Integer.class)
-                .defaultsTo(5);
+            .withOptionalArg()
+            .ofType(Integer.class)
+            .defaultsTo(5);
 
         OptionSpec<String> tzOpt = parser.accepts("t", "Timezone. Example GMT+1 or GMT-5")
-                .withOptionalArg()
-                .ofType(String.class)
-                .defaultsTo("GMT");
+            .withOptionalArg()
+            .ofType(String.class)
+            .defaultsTo("GMT");
 
         OptionSpec<File> outputFileOpt = parser
-                .accepts("o", "output filename")
-                .withRequiredArg()
-                .ofType(File.class);
+            .accepts("o", "output filename")
+            .withRequiredArg()
+            .ofType(File.class);
 
         OptionSpec<?> helpOpt = parser
-                .accepts("h", "show help")
-                .forHelp();
+            .accepts("h", "show help")
+            .forHelp();
 
         OptionSet opt = parser.parse(args);
 
